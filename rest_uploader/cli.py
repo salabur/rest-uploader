@@ -12,6 +12,7 @@ from .rest_uploader import (
     set_endpoint,
     set_token,
     set_language,
+    set_max_upload_file_size,
     set_autorotation,
     set_moveto,
 )
@@ -63,6 +64,15 @@ def parse_argument(arg):
     help="""Specify OCR Language. Refer to Tesseract's documentation found here: 
     https://github.com/tesseract-ocr/tesseract/wiki""",
 )
+
+@click.option(
+    "-x",
+    "--maxuploadsize",
+    "maxuploadsize",
+    default="100000000",
+    help="""Sets the maximum filesize for files to be uploaded""",
+)
+
 @click.option(
     "-t",
     "--autotag",
@@ -109,6 +119,7 @@ def main(
     server="server",
     port="port",
     language="eng",
+    maxuploadsize="100000000",
     autotag="yes",
     destination="inbox",
     autorotation="yes",
@@ -134,12 +145,14 @@ def main(
     else:
         click.echo(f"Found Notebook ID: {notebook_id}")
     set_language(language)
+    set_max_upload_file_size(maxuploadsize)
     autotag = parse_argument(autotag)
     set_autotag(parse_argument(autotag))
     autorotation = parse_argument(autorotation)
     set_autorotation(autorotation)
     moveto = set_moveto(moveto)
     click.echo("Language: " + language)
+    click.echo("Maximum file size to upload: " + maxuploadsize)
     click.echo("Automatically Tag Notes? " + autotag)
     click.echo("Destination Notebook: " + destination)
     click.echo("Autorotation: " + autorotation)
