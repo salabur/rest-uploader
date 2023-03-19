@@ -14,8 +14,8 @@ import csv
 from tabulate import tabulate
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from img_processor import ImageProcessor
-from .api_token import get_token_suffix
+from img_processor2 import ImageProcessor
+from api_token import get_token_suffix
 from pathlib import Path
 
 
@@ -94,6 +94,7 @@ def set_working_directory():
 def set_language(language):
     global LANGUAGE
     LANGUAGE = language
+
 
 def set_max_upload_file_size(max_upload_file_size):
     """was 10000000 in early versions of joplin, limit has been removed sice and is now mainly for compatibility with older android devices and or encryption """
@@ -281,10 +282,13 @@ def upload(filename):
                 if not os.path.exists(previewfile):
                     previewfile = img_processor.pdf_page_to_image(filename)
                 img = img_processor.encode_image(previewfile, "image/png")
+                del img_processor
                 os.remove(previewfile)
                 values = set_json_string(title, NOTEBOOK_ID, body, img)
 
-    response = requests.post(ENDPOINT + "/notes" + TOKEN, data=values)
+    headers = {'Content-type': 'application/x-www-form-urlencoded; charset=utf-8'}
+    response = requests.post(ENDPOINT + "/notes" + TOKEN, data=values.encode('utf-8'), headers=headers)
+    #response = requests.post(ENDPOINT + "/notes" + TOKEN, data=values) old without utf-8 therefor no german umlauts lik äöü?
     # print(response)
     # print(response.text)
     if response.status_code == 200:
@@ -299,14 +303,14 @@ def upload(filename):
             else:
                 try:
                     # Give it a few seconds to release file lock
-                    time.sleep(3)
+                    time.sleep(5)
                     shutil.move(filename, MOVETO)
                 except IOError:
                     print(f"File Locked-unable to move {filename}")
         return 0
     else:
         print("ERROR! NOTE NOT CREATED")
-        print("Something went wrong corrupt file or note > 10MB?")
+        print("Something went wrong corrupt file or note > max upload file size?")
         return -1
 
 
@@ -328,4 +332,24 @@ def watcher(path=None):
 
 
 if __name__ == "__main__":
+    set_endpoint('127.0.0.1', '41184')
+    set_language('deu+eng')
+    global TOKEN
+    TOKEN = "?token=" + '651131dd5b586e9c6b6dfe577a9c29e573a5c6673c46dc3c8987a5283f4252219724d04bfa17b5bdc91c6472b70040596f0475674d5511734c547e2bf474947d'
+    global MAX_UPLOAD_FILE_SIZE
+    MAX_UPLOAD_FILE_SIZE = 100000000
+    global NOTEBOOK_ID
+    destination = "inbox"
+    NOTEBOOK_ID = set_notebook_id(destination.strip())
+    global AUTOTAG
+    AUTOTAG = False
+    global AUTOROTATION
+    AUTOROTATION = True
+    
+    global MOVETO
+    moveto = """B:/Temp/restuploadertest"""
+    if moveto == tempfile.gettempdir():
+        moveto = ""
+    MOVETO = moveto
+
     watcher()

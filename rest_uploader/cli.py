@@ -70,7 +70,7 @@ def parse_argument(arg):
     "--maxuploadsize",
     "maxuploadsize",
     default="100000000",
-    help="""Sets the maximum filesize for files to be uploaded""",
+    help="""Sets the maximum filesize for files to be uploaded now set to ~ 100Mb """,
 )
 
 @click.option(
