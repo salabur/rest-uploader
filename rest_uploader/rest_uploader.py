@@ -44,8 +44,8 @@ class MyHandler(FileSystemEventHandler):
         filename, ext = os.path.splitext(path)
         if ext not in (".tmp", ".part", ".crdownload") and ext[:2] not in (".~"):
             filesize = self.valid_file(ext, path)
-            if filesize > 10000000:
-                print(f"Filesize = {filesize}. Too big for Joplin, skipping upload")
+            if filesize > MAX_UPLOAD_FILE_SIZE:   # was 10000000
+                print(f"Filesize = {filesize}. Maybe too big for Joplin, skipping upload")
                 return False
             else:
                 i = 1
@@ -94,6 +94,11 @@ def set_working_directory():
 def set_language(language):
     global LANGUAGE
     LANGUAGE = language
+
+def set_max_upload_file_size(max_upload_file_size):
+    """was 10000000 in early versions of joplin, limit has been removed sice and is now mainly for compatibility with older android devices and or encryption """
+    global MAX_UPLOAD_FILE_SIZE
+    MAX_UPLOAD_FILE_SIZE = max_upload_file_size
 
 
 def set_token():
@@ -265,7 +270,7 @@ def upload(filename):
         response = create_resource(filename)
         body += f"[{basefile}](:/{response['id']})"
         values = set_json_string(title, NOTEBOOK_ID, body)
-        if response["file_extension"] == "pdf":      
+        if response["file_extension"] == "pdf":
             img_processor = ImageProcessor(LANGUAGE)
             if img_processor.pdf_valid(filename):
                 # Special handling for PDFs
