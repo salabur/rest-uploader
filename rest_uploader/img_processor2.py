@@ -1,5 +1,6 @@
 """Main module."""
 import pypdf
+from pypdf.errors import PdfReadError
 import os
 import datetime
 import time
@@ -122,7 +123,12 @@ class ImageProcessor:
             pdf_reader = pypdf.PdfReader(pdfFileObject, strict=False)
             self.PAGE_COUNT = len(pdf_reader.pages)
             return pdf_reader
-        except: #TODO bring back PdfReadError
+        except PdfReadError as e:
+            logging.warning(f"Error reading PDF: {str(e)}")
+            print("PDF not fully written - no EOF Marker")
+            return None
+        except ValueError as e:
+            logging.warning(f"Error reading PDF - {e.args}")
             print("PDF not fully written - no EOF Marker")
             return None
 
