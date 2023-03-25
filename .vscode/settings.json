@@ -1,7 +1,7 @@
 {
     "python.pythonPath": "/home/justin/.virtualenvs/rest_uploader_dev/bin/python",
     "python.linting.pylintEnabled": false,
-    "python.linting.flake8Enabled": true,
+    "python.linting.flake8Enabled": false,
     "python.linting.enabled": true,
     "restructuredtext.confPath": "${workspaceFolder}/docs",
     "esbonio.sphinx.confDir": "${workspaceFolder}/docs",

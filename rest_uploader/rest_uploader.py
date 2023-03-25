@@ -288,9 +288,8 @@ def upload(filename):
 
     headers = {'Content-type': 'application/x-www-form-urlencoded; charset=utf-8'}
     response = requests.post(ENDPOINT + "/notes" + TOKEN, data=values.encode('utf-8'), headers=headers)
-    #response = requests.post(ENDPOINT + "/notes" + TOKEN, data=values) old without utf-8 therefor no german umlauts lik äöü?
-    # print(response)
-    # print(response.text)
+    #response = requests.post(ENDPOINT + "/notes" + TOKEN, data=values) old without utf-8 therefore no german umlauts like äöü?
+
     if response.status_code == 200:
         if AUTOTAG:
             apply_tags(body, response.json().get("id"))
@@ -335,7 +334,12 @@ if __name__ == "__main__":
     set_endpoint('127.0.0.1', '41184')
     set_language('deu+eng')
     global TOKEN
-    TOKEN = "?token=" + '651131dd5b586e9c6b6dfe577a9c29e573a5c6673c46dc3c8987a5283f4252219724d04bfa17b5bdc91c6472b70040596f0475674d5511734c547e2bf474947d'
+    TOKEN = "not-set"
+    if os.environ.get('JOPLIN_TOKEN') is not None:
+        TOKEN = "?token=" + os.environ['JOPLIN_TOKEN']
+    else:
+        print("Please set the environment variable JOPLIN_TOKEN")
+        exit(1)
     global MAX_UPLOAD_FILE_SIZE
     MAX_UPLOAD_FILE_SIZE = 100000000
     global NOTEBOOK_ID

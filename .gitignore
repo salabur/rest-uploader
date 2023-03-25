@@ -108,3 +108,4 @@ venv.bak/
 
 # direnv 
 .direnv/
+.vscode/settings.json

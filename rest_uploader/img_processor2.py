@@ -1,4 +1,5 @@
 """Main module."""
+import logging
 import pypdf
 from pypdf.errors import PdfReadError
 import os
@@ -12,6 +13,12 @@ from pdf2image.pdf2image import convert_from_path
 from pytesseract import image_to_string, TesseractError, image_to_osd, Output
 from reportlab.pdfgen import canvas
 import base64
+import cv2
+import numpy as np
+
+class FileOcrResult:
+    def __init__(self, pages):
+        self.pages = pages
 
 
 class ImageProcessor:
@@ -39,6 +46,37 @@ class ImageProcessor:
         outputfile = "signature.png"
         img.save(outputfile, 'PNG')
         return outputfile
+    
+
+    def __rotate_image(self, filename):
+        """
+        Tries to deskew the image; will not rotate it more than 90 degrees
+        :param filename:
+        :return: rotated file
+        """
+        # Inspired by https://www.pyimagesearch.com/2017/02/20/text-skew-correction-opencv-python/
+        image = cv2.imread(filename, cv2.IMREAD_COLOR) # Initially decode as color
+        if image is None:
+            return None
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        gray = cv2.bitwise_not(gray)
+        threshold = cv2.threshold(gray, 0, 255,
+                                cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+        coordinates = np.column_stack(np.where(threshold > 0))
+        angle = cv2.minAreaRect(coordinates)[-1]
+        if angle < -45:
+            angle = -(90 + angle)
+        else:
+            angle = -angle
+        (height, width) = image.shape[:2]
+        center = (width // 2, height // 2)
+        matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
+        rotated_image = cv2.warpAffine(image, matrix, (width, height),
+                                    flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+        temp_file = f"{tempfile.gettempdir()}/{uuid4()}.png"
+        cv2.imwrite(temp_file, rotated_image)
+        return temp_file
+
 
     def sign_pdf(self, pdf, signature, text, coords, sigdate=False):
         # for y coord, pass in pixels from top of page, as the logic
@@ -125,11 +163,11 @@ class ImageProcessor:
             return pdf_reader
         except PdfReadError as e:
             logging.warning(f"Error reading PDF: {str(e)}")
-            print("PDF not fully written - no EOF Marker")
+            print(f"PDF not fully written - no EOF Marker: {e.args}")
             return None
         except ValueError as e:
             logging.warning(f"Error reading PDF - {e.args}")
-            print("PDF not fully written - no EOF Marker")
+            print(f"PDF not fully written - no EOF Marker: {e.args}")
             return None
 
     def pdf_valid(self, filename):
@@ -139,7 +177,7 @@ class ImageProcessor:
             return True
 
     def pdf_page_to_image(self, path, page_num=0):
-        pages = convert_from_path(path, 250)
+        pages = convert_from_path(path, 400)
         if page_num == 0:
             tempfile = f"{self.TEMP_PATH}/preview.png"
             self.PREVIEWFILE = tempfile
@@ -199,6 +237,7 @@ class ImageProcessor:
             # if no exception is thrown, we have a valid image
             return True
 
+
     def extract_text_from_image(self, filename, autorotate=True): #TODO reset to False
         try:
             img = self.open_image(filename)
@@ -218,6 +257,37 @@ class ImageProcessor:
             text = "\nCheck Tesseract OCR Configuration\n"
             text += e.message
         return text
+
+    def __get_image(self, filename):
+        try:
+            return Image.open(filename)
+        except OSError:
+            print(f"Error reading image: {filename}")
+            return None
+
+
+    # def extract_text_from_image(self, filename, auto_rotate=False, language="eng"):
+    #     try:
+    #         img = self.__get_image(filename)
+    #         text = image_to_string(img, lang=language)
+    #         if auto_rotate:
+    #             rotated_image = self.__rotate_image(filename)
+    #             if rotated_image is None:
+    #                 return None
+    #             result = self.extract_text_from_image(filename, auto_rotate=False, language=language)
+    #             os.remove(rotated_image)
+    #             if result is None:
+    #                 return None
+    #             text = result.pages[0]
+    #         # 10 or fewer characters is probably just garbage
+    #         if len(text.strip()) > 10:
+    #             return self.FileOcrResult([text.strip()])
+    #         else:
+    #             return None
+    #     except TesseractError as e:
+    #         print(f"TesseractError {e.message}")
+    #         return None
+
 
     def encode_image(self, filename, datatype):
         encoded = base64.b64encode(open(filename, "rb").read())
@@ -268,6 +338,9 @@ class ImageProcessor:
         print("Conversion complete!")
         if delete_original:
             print("Removing original PDF...")
-            os.remove(filename)
-            print("Local PDF deleted!")
+            try:
+                os.remove(filename)
+                print("Local PDF deleted!")
+            except Exception as e:
+                print(f'Error deleting File: ')
         return new_files
